@@ -22,7 +22,7 @@ https://github.com/OurDigitalWorld/iiif_zipped
 */
 
 $HOST = ""; //json files on web storage are rewritten to include server (if desired)
-$SCRIPT = "/shim/dist2/iiif_zipper.php"; //include the path to the script
+$SCRIPT = "/web_path/iiif_zipper.php"; //include the url path to the script
 $ZIP_DIR_PATH = ""; //location of cached zip dirs (or empty)
 $SCRIPT_PATH_LEN = 3; //depth of file layout, e.g: pub_code [1], date [2], page [3]
 $WEB_STORAGE = "https://WEB_STORAGE_LOC"; //url of web storage
