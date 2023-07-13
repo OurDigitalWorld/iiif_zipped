@@ -42,15 +42,18 @@ tiles.zip
 The contents of the _cloud_ folder will be uploaded to cloud storage, and the contents of the 
 _cache_ folder will be put on a location accessible to the php script. Rudimentary versions
 of the IIIF _manifest.json_ and _info.json_ will be created according to each folder. The 
-_cache_ is optional, if it's not used, the php script will end up making 3 calls to the web storage provider:
-1. URL to get file size of the ZIP archive
-2. URL to extract ZIP directory from ZIP archive using byte range
-3. URL to extract desired file from ZIP archive using byte range
+_cache_ is optional, if it's not used, the php script will end up making 4 calls to the web 
+storage provider:
+1. URL to get file size of the ZIP archive (the key information needed is near the end
+   of the file so the size allows the offset to be calculated)
+3. URL to extract the end portion of the ZIP archive to get the _end of directory_ record
+4. URL to extract ZIP directory from ZIP archive using byte range based on the _end of directory_ record
+5. URL to extract desired file from ZIP archive using byte range (either tile request of _info.json_ file)
 
-The _cache_ is a copy of the ZIP directory, if present, the php script will read the directory
-and make one call to web storage with the byte range for the requested file. Depending
-on network bandwidth, this might provide a significantly faster response.
-The glue that holds this together is the ZIP directory format, these two web pages
+The _cache_ is a copy of the ZIP directory. If present on the same file system as the php script, 
+the php script will read the directory and make one call to web storage with the byte range for 
+the requested file. Depending on network bandwidth, this might provide a significantly faster 
+response. The glue that holds this together is the ZIP directory format, these two web pages
 have been extremely helpful in sorting out this mechanism:
 * https://docs.fileformat.com/compression/zip/
 * https://users.cs.jmu.edu/buchhofp/forensics/formats/pkzip.html
