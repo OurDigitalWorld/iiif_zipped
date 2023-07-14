@@ -42,15 +42,24 @@ tiles.zip
 The contents of the _cloud_ folder will be uploaded to cloud storage, and the contents of the 
 _cache_ folder will be put on a location accessible to the php script. Rudimentary versions
 of the IIIF _manifest.json_ and _info.json_ will be created according to each folder. The 
-_cache_ is optional, if it's not used, the php script will end up making 4 calls to the web 
-storage provider:
+_cache_ is optional. If it's not used, the php script will end up making 4 calls to the web 
+storage provider on the first call:
 1. URL to get file size of the ZIP archive (the key information needed is near the end
    of the file so the size allows the offset to be calculated)
 3. URL to extract the end portion of the ZIP archive to get the _end of directory_ record
 4. URL to extract ZIP directory from ZIP archive using byte range based on the _end of directory_ record
 5. URL to extract desired file from ZIP archive using byte range (either tile request of _info.json_ file)
 
-The _cache_ is a copy of the ZIP directory. If present on the same file system as the php script, 
+The directory will be added to an [APC](http://php.adamharvey.name/manual/en/book.apc.php) cache. For Ubuntu,
+this might mean installing APC if it's not already there:
+```
+sudo apt-get install php-apcu
+```
+Restart Apache afterwards. If you do things at the command line, you seem to need to tell PHP that APC is enabled:
+```
+php -d apc.enable_cli=1 ./iiif_zipper.php
+```
+The file system _cache_ is a copy of the ZIP directory. If present on the same file system as the php script, 
 the php script will read the directory and make one call to web storage with the byte range for 
 the requested file. Depending on network bandwidth, this might provide a significantly faster 
 response. The glue that holds this together is the ZIP directory format, these two web pages
