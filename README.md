@@ -20,7 +20,7 @@ We are currently using a simple folder layout for many of collections. A typical
 as follows:
 ```
 $ ls sample/intro/letter/
-Vol_1_Intro_0001.tif  Vol_1_Intro_0001.tif  Vol_1_Intro_0003.tif
+Vol_1_Intro_0001.tif  Vol_1_Intro_0002.tif  Vol_1_Intro_0003.tif
 ```
 In this case, we want to serve the images to IIIF viewers. To prepare the images, we could
 issue this command:
