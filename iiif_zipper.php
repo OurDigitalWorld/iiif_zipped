@@ -22,10 +22,12 @@ https://github.com/OurDigitalWorld/iiif_zipped
 */
 
 $HOST = ""; //json files on web storage are rewritten to include server (if desired)
-$SCRIPT = "/web_path/iiif_zipper.php"; //include the url path to the script
+$SCRIPT = "/web_path/iiif_zipper.php"; //include the path to the script
 $ZIP_DIR_PATH = ""; //location of cached zip dirs (or empty)
 $SCRIPT_PATH_LEN = 3; //depth of file layout, e.g: pub_code [1], date [2], page [3]
 $WEB_STORAGE = "https://WEB_STORAGE_LOC"; //url of web storage
+$WEB_STORAGE = "https://collections.uwindsor.ca/olrcnode/MET"; //url of web storage
+$CACHE_TIMEOUT = 3600; //in seconds, if 0, falls back on PHP environment
 
 //zip format values, these should not need to be changed
 $END_OF_DIR_SIGNATURE = "\x50\x4b\x05\x06"; //this should be near the end of the archive
@@ -126,6 +128,7 @@ function sort_out_json_display( $file_data, $zip_path, $host, $script ) {
 $url_components = parse_url($_SERVER['REQUEST_URI']);
 parse_str($url_components['query'], $params);
 $path_info = $params['path'];
+
 $path_info = strtok($path_info, '?');
 
 $is_img = TRUE;//assume image request by default
@@ -149,7 +152,7 @@ $req_file = implode("/",$tile_asset);
 
 if(strpos($req_file, "json") !== false) $is_img = FALSE;
 
-$file_size = 0;
+//manifest.json is not in zip archive, so it is a direct request
 if(strpos($path_info, "manifest.json") !== false) {
     $url = $WEB_STORAGE . "/" . $zip_path . "/manifest.json";
     $file_data = file_get_contents($url);
@@ -158,27 +161,33 @@ if(strpos($path_info, "manifest.json") !== false) {
 }//if 
 
 $url = $WEB_STORAGE . "/" . $zip_path . "/tiles.zip";
+$result = apcu_fetch($zip_path); //thanks pbinkley!
+$file_size = strlen($result);
 
 $fn_name = str_replace("/","\/",$req_file);
 $fn_name = str_replace(".","\.",$fn_name);
 $fn_name = "tiles\/" . $fn_name;
 
-if (strlen($ZIP_DIR_PATH) === 0) $file_size = curl_get_file_size($url);
+if (strlen($ZIP_DIR_PATH) === 0 && $file_size === 0) $file_size = curl_get_file_size($url);
 	
 if ($file_size > $END_OF_FILE_GAP || strlen($ZIP_DIR_PATH) > 0) {
-    if (strlen($ZIP_DIR_PATH) === 0) { // no zip cache so get everything from web storage
-        $result = curl_get_range($url,$file_size - $END_OF_FILE_GAP,$file_size);
-        //look for end of directory record signature
-        $match = preg_match('/' . $END_OF_DIR_SIGNATURE . '/', $result, $matches, PREG_OFFSET_CAPTURE);
-        if ($match == 1) {
-	    //we use the end of directory record to find the central directory record
-            $pos = $matches[0][1] + 12;
-            $ident = mb_substr($result, $pos, 10, '8bit');
-            $dir = unpack("L2S", $ident);
-            $size = (int)$dir['S1'];
-            $offset = $dir['S2'];
-            $result = curl_get_range($url,$offset,$offset + $size);
-	}//if    
+    if (strlen($ZIP_DIR_PATH) === 0) { // no zip file cache, use apc cache or web storage
+	if (strlen($result) == 0) { //use web storage for everything
+            $result = curl_get_range($url,$file_size - $END_OF_FILE_GAP,$file_size);
+            //look for end of directory record signature
+            $match = preg_match('/' . $END_OF_DIR_SIGNATURE . '/', $result, $matches, PREG_OFFSET_CAPTURE);
+
+            if ($match == 1) {
+	        // use the end of directory record to find the central directory record
+                $pos = $matches[0][1] + 12;
+                $ident = mb_substr($result, $pos, 10, '8bit');
+                $dir = unpack("L2S", $ident);
+                $size = (int)$dir['S1'];
+                $offset = $dir['S2'];
+                $result = curl_get_range($url,$offset,$offset + $size);
+	        apcu_store($zip_path,$result,$CACHE_TIMEOUT); // add directory to cache
+	    }//if    
+	}//if
     } else { // use local cache
 	$zip_dir_path = $ZIP_DIR_PATH . "/" . $zip_path . "/dir.bin";
         $file_size = filesize($zip_dir_path);
