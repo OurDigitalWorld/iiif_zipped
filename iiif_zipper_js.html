@@ -1,0 +1,122 @@
+
+<html>  
+<head>  
+<title>simple javascript example for using byte ranges with zip format for iiif</title>  
+</head>  
+<script>  
+//url for zip directory
+var dir_url = "https://collections.uwindsor.ca/login/iiif/zips/essex/1971-08-04/1971-08-04-0001/dir.bin";
+//url for zip archive
+var zip_url = "https://collections.uwindsor.ca/olrcnode/MET/essex/1971-08-04/1971-08-04-0001/tiles.zip";
+
+//zip format values, these should not need to be changed
+var CENTRAL_DIR_START = 46; //we look for the file name, which starts in this position
+var FILE_NAME_LEN_POS = 28; //position of file name len (always get this from directory!)
+var EXTRA_FIELD_LEN_POS = 30; //positon of extra field len (if any)
+var FIELD_COMMENT_LEN_POS = 32; //positon of field comment (if any)
+var COMP_SIZE_POS = 20; //position of size of file (we don't deal with compression so matches original)
+var REL_OFFSET_POS = 42; //offset from start of archive to local file header
+var LOCAL_FILE_HEADER_LEN = 30; //length of local file header (which we will skip)
+
+//use FileReader to convert blob to bytes
+function getBuffer(fileData) {
+    return function(resolve) {
+        var reader = new FileReader();
+        reader.readAsArrayBuffer(fileData);
+        reader.onload = function() {
+            var arrayBuffer = reader.result
+            var bytes = new Uint8Array(arrayBuffer);
+            resolve(bytes);
+        }//reader.onload
+    }//function
+}//getBuffer
+
+//convert 4 byte value to int
+function sortOutInt4(data,pos,num) {
+    var u32bytes = data.buffer.slice(pos, pos + 4);
+    var uint = new Uint32Array(u32bytes)[0];
+    return uint;
+}//sortOutInt4
+
+//convert 2 byte value to int
+function sortOutInt2(data,pos,num) {
+    var u16bytes = data.buffer.slice(pos, pos + 2);
+    var uint = new Uint16Array(u16bytes)[0];
+    return uint;
+}//sortOutInt2
+
+//fetch urls as needed
+function jsZipperIIIF() {  
+    var IIIFlist = document.getElementById("zipoptions");  
+    var fn_name = IIIFlist.options[IIIFlist.selectedIndex].text;
+    fetch(dir_url)
+        .then(res => res.blob()) // Gets the response and returns it as a blob
+        .then(blob => {
+            var promise = new Promise(getBuffer(blob));
+            promise.then(function(data) {
+            //force 1 byte conversion by using ascii
+            //see https://stackoverflow.com/questions/63383146/find-index-of-string-in-uint8array
+            const zipStr = new TextDecoder('ascii').decode(data);
+            //get starting point from searching string
+            var base_pos = zipStr.search('tiles/' + fn_name);
+            if (base_pos != -1) {
+                var start = base_pos - CENTRAL_DIR_START;
+                fn_len = sortOutInt2(data,start + FILE_NAME_LEN_POS);
+                ef_len = sortOutInt2(data,start + EXTRA_FIELD_LEN_POS);
+                fc_len = sortOutInt2(data,start + FIELD_COMMENT_LEN_POS);
+                comp_size = sortOutInt4(data,start + COMP_SIZE_POS);
+                rel_offset = sortOutInt4(data,start + REL_OFFSET_POS);
+                rel_offset = rel_offset + fn_len + ef_len + fc_len;
+                rel_offset = rel_offset + LOCAL_FILE_HEADER_LEN;
+                fetch(zip_url, {
+                    headers: {
+                        Range: "bytes=" + rel_offset + "-" + (rel_offset + (comp_size -1))
+                    }
+                })
+                    .then(res => res.blob()) // Gets the response and returns it as a blob
+                    .then(blob => {
+                         if (fn_name.includes(".json")) {
+                             var promise2 = new Promise(getBuffer(blob));
+                             promise2.then(function(data2) {
+                                 const zStr = new TextDecoder('utf-8').decode(data2);
+                                 document.getElementById("tile_img").src = "";
+                                 document.getElementById("info_json").textContent = zStr;
+                             })
+                         } else {
+                             document.getElementById("info_json").textContent = "";
+                             var urlCreator = window.URL || window.webkitURL;
+                             var imageUrl = urlCreator.createObjectURL(blob);
+                             document.getElementById("tile_img").src = imageUrl;
+                         }//if
+                    });//then blob
+            }//if base_pos
+        }).catch(function(err) {
+            console.log('Error: ',err);
+        });//catch
+    });//fetch
+}//jsZipperIIIF
+</script>  
+  
+<body>  
+
+    <p>
+    This is a simple demo of using a JS based tile handler for IIIF. A zip directory
+    is loaded and parsed to find the resource in the list below. If there was no
+    connectivity, the zip archive itself could probably be used from local storage.
+    The image and json values are loaded below.
+    </p>
+    <form>  
+    <b> Select from sample values in ZIP archive </b>  
+        <select id = "zipoptions" onchange = "jsZipperIIIF()" >  
+            <option> ---Choose option--- </option>  
+            <option> info.json </option>  
+            <option> full/205,/0/default.jpg </option>  
+            <option> 512,7168,512,512/512,/0/default.jpg </option>  
+            <option> 1024,5632,512,512/512,/0/default.jpg </option>  
+        </select>  
+    </form>  
+    <img id="tile_img"/>
+    <pre id="info_json"></pre>
+
+</body>  
+</html>  
