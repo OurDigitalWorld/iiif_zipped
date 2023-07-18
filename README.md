@@ -91,6 +91,8 @@ but the implementation details are added on the fly. Another approach
 is to use JavaScript to do the IIIF calls using byte-ranges, the
 file _iiif_zipper_js.html_ shows one example of this, which is 
 [deployed here](https://collections.uwindsor.ca/login/iiif/iiif_zipper_js.html).
+As a simple proof-of-concept, this is [the universal viewer set up to pull
+tiles from the zip archive in the same manner](https://collections.uwindsor.ca/login/iiif/uv2/uv.html#?manifest=/login/iiif/min/essex/1971-08-04/manifest.json).
 We are still in the early days of working out how best to structure IIIF support
 with modest server resources. Our deepest thanks to [Peter Binkley](https://pbinkley.github.io/) 
 at the [University of Alberta Library](https://www.library.ualberta.ca/) for helping us 
