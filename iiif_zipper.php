@@ -26,7 +26,6 @@ $SCRIPT = "/web_path/iiif_zipper.php"; //include the path to the script
 $ZIP_DIR_PATH = ""; //location of cached zip dirs (or empty)
 $SCRIPT_PATH_LEN = 3; //depth of file layout, e.g: pub_code [1], date [2], page [3]
 $WEB_STORAGE = "https://WEB_STORAGE_LOC"; //url of web storage
-$WEB_STORAGE = "https://collections.uwindsor.ca/olrcnode/MET"; //url of web storage
 $CACHE_TIMEOUT = 3600; //in seconds, if 0, falls back on PHP environment
 
 //zip format values, these should not need to be changed
